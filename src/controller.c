@@ -10,11 +10,11 @@
 
 static float state[4];
 static b_struct_T parameters;
-static float ref;
-static float N = 0.9877;
-static float K[] = {-0.4749,-18.9975,-3.8103,0.9877};
+static float ref = 0;
+static float N = 0.1801;
+static float K[] = {-0.7249,-24.2260,-4.6940,2.5856};
 
-static MOTOR_PARAM_T motor = {.K = 0.0102, .r = 0.04, .eta = 0.5, .N = 30, .taum = 0.00204, .R = 2.55};
+static MOTOR_PARAM_T motor = {.K = 0.0102, .r = 0.04, .eta = 0.5, .N = 30, .taum = 0.008, .R = 2.55};
 
 
 void control_init(void)
@@ -33,13 +33,10 @@ float control_allocation(float tau)
 
 	if(tau>0){
 		V = ((tau)/(motor.eta*motor.N*motor.K) + (motor.taum/motor.K))*motor.R+((motor.K*motor.N*state[0]));
-//		printf_P(PSTR("%f\n"),V);
 	}else if(tau<0){
 		V = ((tau)/(motor.eta*motor.N*motor.K) - (motor.taum/motor.K))*motor.R+((motor.K*motor.N*state[0]));
-//		printf_P(PSTR("x%f\n"),V);
 	}else{
 		V = motor.K*motor.N*state[0];
-//		printf_P(PSTR("y%f\n"),V);
 	}
 
 	return(V);
@@ -109,23 +106,26 @@ float k_x(void)
 	return(state[0]*K[0]+state[1]*K[1]+state[2]*K[2]);
 }
 
-int pil(void)
+float pil(void)
 {
 	float out;
-	uint8_t pwm;
+	int pwm;
 	
 	out = control_allocation(controller());
 	pwm = get_pwm(out);
+	set_speed1(-pwm);
+	set_speed2(pwm);
 
-	return(pwm);
+	return((float)pwm);
 }
 
 float integrator(void)
 {
 	static float err = 0;
-	static float previous;
+	static float previous = 0;
 
 	previous+=err*STEP;
+
 	err = ref - (state[0] + state[2]);
 
 	return(previous);
@@ -140,4 +140,9 @@ float get_speed(void)
 	current = enc1_read();
 
 	return((current-previous)/STEP);
+}
+
+float check_angle(void)
+{
+	return(state[1]);
 }
